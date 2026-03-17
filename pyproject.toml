@@ -1,0 +1,24 @@
+[project]
+name = "ijepa"
+version = "0.1.0"
+description = "Image-based Joint-Embedding Predictive Architecture"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "CC-BY-NC-4.0"
+dependencies = [
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "numpy",
+    "pyyaml",
+    "pillow",
+    "datasets>=4.8.2",
+]
+
+[project.optional-dependencies]
+distributed = [
+    "submitit",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
