@@ -12,6 +12,7 @@ dependencies = [
     "pyyaml",
     "pillow",
     "datasets>=4.8.2",
+    "tqdm>=4.67.3",
 ]
 
 [project.optional-dependencies]

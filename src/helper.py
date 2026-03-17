@@ -71,17 +71,20 @@ def init_model(
     model_name='vit_base',
     crop_size=224,
     pred_depth=6,
-    pred_emb_dim=384
+    pred_emb_dim=384,
+    use_fused_attn=False
 ):
     encoder = vit.__dict__[model_name](
         img_size=[crop_size],
-        patch_size=patch_size)
+        patch_size=patch_size,
+        use_fused_attn=use_fused_attn)
     predictor = vit.__dict__['vit_predictor'](
         num_patches=encoder.patch_embed.num_patches,
         embed_dim=encoder.embed_dim,
         predictor_embed_dim=pred_emb_dim,
         depth=pred_depth,
-        num_heads=encoder.num_heads)
+        num_heads=encoder.num_heads,
+        use_fused_attn=use_fused_attn)
 
     def init_weights(m):
         if isinstance(m, torch.nn.Linear):
@@ -152,5 +155,5 @@ def init_opt(
         ref_wd=wd,
         final_wd=final_wd,
         T_max=int(ipe_scale*num_epochs*iterations_per_epoch))
-    scaler = torch.cuda.amp.GradScaler() if use_bfloat16 else None
+    scaler = torch.amp.GradScaler('cuda') if use_bfloat16 else None
     return optimizer, scaler, scheduler, wd_scheduler

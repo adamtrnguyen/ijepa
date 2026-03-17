@@ -23,6 +23,7 @@ import sys
 import yaml
 
 import numpy as np
+from tqdm import tqdm
 
 import torch
 import torch.multiprocessing as mp
@@ -78,6 +79,7 @@ def main(args, resume_preempt=False):
     copy_data = args['meta']['copy_data']
     pred_depth = args['meta']['pred_depth']
     pred_emb_dim = args['meta']['pred_emb_dim']
+    use_fused_attn = args['meta'].get('use_fused_attention', False)
     if not torch.cuda.is_available():
         device = torch.device('cpu')
     else:
@@ -165,7 +167,8 @@ def main(args, resume_preempt=False):
         crop_size=crop_size,
         pred_depth=pred_depth,
         pred_emb_dim=pred_emb_dim,
-        model_name=model_name)
+        model_name=model_name,
+        use_fused_attn=use_fused_attn)
     target_encoder = copy.deepcopy(encoder)
 
     # -- make data transforms
@@ -275,7 +278,9 @@ def main(args, resume_preempt=False):
         maskB_meter = AverageMeter()
         time_meter = AverageMeter()
 
-        for itr, (udata, masks_enc, masks_pred) in enumerate(unsupervised_loader):
+        pbar = tqdm(unsupervised_loader, desc=f'Epoch {epoch+1}/{num_epochs}',
+                    dynamic_ncols=True, leave=True)
+        for itr, (udata, masks_enc, masks_pred) in enumerate(pbar):
 
             def load_imgs():
                 # -- unsupervised imgs
@@ -343,28 +348,12 @@ def main(args, resume_preempt=False):
             # -- Logging
             def log_stats():
                 csv_logger.log(epoch + 1, itr, loss, maskA_meter.val, maskB_meter.val, etime)
-                if (itr % log_freq == 0) or np.isnan(loss) or np.isinf(loss):
-                    logger.info('[%d, %5d] loss: %.3f '
-                                'masks: %.1f %.1f '
-                                '[wd: %.2e] [lr: %.2e] '
-                                '[mem: %.2e] '
-                                '(%.1f ms)'
-                                % (epoch + 1, itr,
-                                   loss_meter.avg,
-                                   maskA_meter.avg,
-                                   maskB_meter.avg,
-                                   _new_wd,
-                                   _new_lr,
-                                   torch.cuda.max_memory_allocated() / 1024.**2,
-                                   time_meter.avg))
-
-                    if grad_stats is not None:
-                        logger.info('[%d, %5d] grad_stats: [%.2e %.2e] (%.2e, %.2e)'
-                                    % (epoch + 1, itr,
-                                       grad_stats.first_layer,
-                                       grad_stats.last_layer,
-                                       grad_stats.min,
-                                       grad_stats.max))
+                pbar.set_postfix(
+                    loss=f'{loss_meter.avg:.3f}',
+                    lr=f'{_new_lr:.1e}',
+                    mem=f'{torch.cuda.max_memory_allocated() / 1024.**2:.0f}M',
+                    ms=f'{time_meter.avg:.0f}',
+                )
 
             log_stats()
 
