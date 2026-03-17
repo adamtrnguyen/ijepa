@@ -1,9 +1,15 @@
 # HuggingFace datasets wrapper for ImageNet-1K
 # Drop-in replacement for imagenet1k.py that loads from HF hub
 
+import warnings
 import torch
 from datasets import load_dataset
 from logging import getLogger
+from PIL import Image
+
+# Suppress Pillow EXIF warnings (common in ImageNet)
+warnings.filterwarnings('ignore', message='Corrupt EXIF data', category=UserWarning)
+Image.MAX_IMAGE_PIXELS = None
 
 logger = getLogger()
 
@@ -13,7 +19,7 @@ class HFImageNet(torch.utils.data.Dataset):
 
     def __init__(self, split='train', transform=None):
         self.transform = transform
-        self.dataset = load_dataset('ILSVRC/imagenet-1k', split=split)
+        self.dataset = load_dataset('ILSVRC/imagenet-1k', split=split, num_proc=16)
         logger.info(f'Loaded HF ImageNet split={split}, len={len(self.dataset)}')
 
     def __len__(self):
